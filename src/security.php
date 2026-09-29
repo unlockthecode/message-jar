@@ -3,16 +3,46 @@ declare(strict_types=1);
 
 /**
  * Generic security helpers: output escaping, request helpers,
- * and header setup.
+ * CSS value helpers, and header-related utilities.
  */
 
 /**
  * Escape a value for safe HTML output.
- * Use this on EVERY variable that gets echoed into HTML.
+ * Use this on EVERY variable that gets echoed into HTML text or
+ * attribute values.
+ *
+ * Note: do NOT use this on CSS color values inside a style
+ * attribute — htmlspecialchars() can encode '#' and break the
+ * CSS parser silently. Use css_hex_color() for that instead.
  */
 function e(?string $value): string
 {
     return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+/**
+ * Safely output a hex color for use inside a CSS custom property.
+ *
+ * Why not use e()? htmlspecialchars() may encode '#' as &#35; in
+ * some PHP configurations. getAttribute('style') decodes it back
+ * to '#' for display, but the CSS parser sees the pre-decoded
+ * value and rejects the whole declaration — silently. The
+ * symptom is "the inline style looks correct in DevTools but
+ * the CSS custom property is empty when read via
+ * getComputedStyle().getPropertyValue()."
+ *
+ * Hex colors contain only characters that are safe in both HTML
+ * attributes and CSS values (#, 0-9, a-f, A-F), so we validate
+ * against a strict pattern and emit raw.
+ *
+ * Returns the fallback if the input isn't a valid #rrggbb.
+ */
+function css_hex_color(?string $color, string $fallback = '#ff8fab'): string
+{
+    if ($color !== null && preg_match('/^#[0-9a-fA-F]{6}$/', $color)) {
+        return $color;
+    }
+    return $fallback;
 }
 
 /**
@@ -74,14 +104,14 @@ function is_https_url(?string $url): bool
  */
 function human_time_ago(string $dbDatetime): string
 {
-    $ts   = strtotime($dbDatetime);
+    $ts = strtotime($dbDatetime);
     if ($ts === false) return '';
     $diff = time() - $ts;
 
-    if ($diff < 60)          return 'just now';
-    if ($diff < 3600)        return (int)($diff / 60) . ' min ago';
-    if ($diff < 86400)       return (int)($diff / 3600) . ' h ago';
-    if ($diff < 2 * 86400)   return 'yesterday';
-    if ($diff < 7 * 86400)   return (int)($diff / 86400) . ' days ago';
+    if ($diff < 60)        return 'just now';
+    if ($diff < 3600)      return (int)($diff / 60) . ' min ago';
+    if ($diff < 86400)     return (int)($diff / 3600) . ' h ago';
+    if ($diff < 2 * 86400) return 'yesterday';
+    if ($diff < 7 * 86400) return (int)($diff / 86400) . ' days ago';
     return date('M j', $ts);
 }

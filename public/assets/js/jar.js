@@ -1,6 +1,20 @@
 (() => {
     'use strict';
 
+    // Apply jar colors from data-jar-color attributes on any page.
+    // This runs BEFORE the .jar-page check below, so it also fires
+    // on the dashboard where there is no .jar-page element.
+    //
+    // Why JS instead of an inline style="--jar-color: ..." attribute?
+    // Some browsers resolve custom properties in the initial HTML
+    // against a stylesheet that isn't fully parsed yet, decide the
+    // property has no valid value, and cache that. Setting the same
+    // value later via setProperty() reliably re-resolves it.
+    document.querySelectorAll('[data-jar-color]').forEach(function (el) {
+        var c = el.dataset.jarColor;
+        if (c) el.style.setProperty('--jar-color', c);
+    });
+
     const page = document.querySelector('.jar-page');
     if (!page) return;
 
@@ -16,7 +30,6 @@
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const OPEN_MS    = reduceMotion ? 0 : 600;  // must match CSS .is-opening duration
-    const SHAKE_MS   = reduceMotion ? 0 : 500;
     const PRE_DELAY  = reduceMotion ? 0 : 180;  // pause between shake and open
 
     let drawing   = false;
@@ -122,7 +135,7 @@
             }
 
             // After first successful draw, reveal the actions container
-            // and enable the button. Jar is hidden, so the button is the only trigger.
+            // and enable the button.
             if (firstDraw) {
                 actions.hidden = false;
                 firstDraw = false;

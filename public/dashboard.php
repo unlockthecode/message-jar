@@ -46,5 +46,7 @@ require __DIR__ . '/../templates/header.php';
             <?php endforeach; ?>
         </section>
     <?php endif; ?>
+
+    <script src="/assets/js/jar.js" defer></script>
 </main>
 <?php require __DIR__ . '/../templates/footer.php'; ?>

@@ -17,10 +17,11 @@ $csrf = csrf_token();
 $title = $jar['name'];
 require __DIR__ . '/../templates/header.php';
 ?>
+<?php $jarColor = css_hex_color($jar['theme_color'] ?? null); ?>
 <main class="jar-page"
       data-jar-id="<?= (int)$jar['id'] ?>"
       data-csrf="<?= e($csrf) ?>"
-      style="--jar-color: <?= e($jar['theme_color'] ?: '#ff8fab') ?>;">
+      data-jar-color="<?= $jarColor ?>">
 
     <header class="topbar">
         <nav class="topnav">
@@ -53,6 +54,17 @@ require __DIR__ . '/../templates/header.php';
     <div class="jar-actions" id="jar-actions" hidden>
         <button id="draw-btn" type="button" class="btn">Draw another</button>
     </div>
+    <script>
+        // Apply jar color via JS to avoid an inline-style resolution
+        // quirk where the browser ignores the custom property before
+        // the stylesheet is fully parsed.
+        (function () {
+            var page = document.querySelector('.jar-page');
+            if (page && page.dataset.jarColor) {
+                page.style.setProperty('--jar-color', page.dataset.jarColor);
+            }
+        })();
+    </script>
 </main>
 
 <script src="/assets/js/jar.js" defer></script>
