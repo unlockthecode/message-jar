@@ -1,0 +1,41 @@
+# ── Environment & secrets ──────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── Logs ───────────────────────────────────────────────
+logs/*.log
+logs/*.log.*
+*.log
+
+# ── Dependencies ───────────────────────────────────────
+/vendor/
+composer.lock
+
+# ── IDE / editors ──────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ── OS cruft ───────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+._*
+
+# ── Build artifacts ────────────────────────────────────
+/public/uploads/
+/public/cache/
+*.tmp
+*.bak
+
+# ── Keep these tracked even if empty ───────────────────
+!logs/.gitkeep
+!.env.example
