@@ -125,9 +125,9 @@ header('X-Frame-Options: DENY');
 $csp = implode('; ', [
     "default-src 'none'",
     "script-src 'self'",
-    "style-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
     "img-src 'self' https://ik.imagekit.io data:",
-    "font-src 'self'",
+    "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self'",
     "frame-src https://www.youtube-nocookie.com",
     "frame-ancestors 'none'",

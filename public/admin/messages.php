@@ -84,7 +84,7 @@ require __DIR__ . '/../../templates/admin_header.php';
                         </form>
                         <a href="/admin/message-edit.php?id=<?= (int)$m['id'] ?>">Edit</a>
                         <form method="post" action="/admin/message-delete.php" class="inline"
-                              onsubmit="return confirm('Delete this message?');">
+                            data-confirm="Delete this message? This cannot be undone.">
                             <?= csrf_field() ?>
                             <input type="hidden" name="id" value="<?= (int)$m['id'] ?>">
                             <input type="hidden" name="jar_id" value="<?= (int)$jar['id'] ?>">

@@ -75,10 +75,16 @@ require __DIR__ . '/../../templates/admin_header.php';
         </label>
 
         <div class="form-row">
-            <label>
+            <label class="emoji-field">
                 Emoji
-                <input type="text" name="emoji" maxlength="8"
-                       value="<?= e((string)$jar['emoji']) ?>" placeholder="❤️">
+                <div class="emoji-input-wrap">
+                    <input type="text" name="emoji" id="emoji-input" maxlength="8"
+                           value="<?= e((string)$jar['emoji']) ?>" placeholder="❤️"
+                           autocomplete="off">
+                    <button type="button" class="emoji-trigger" id="emoji-trigger"
+                            aria-label="Pick an emoji">😊</button>
+                </div>
+                <div class="emoji-picker" id="emoji-picker" hidden></div>
             </label>
 
             <label>

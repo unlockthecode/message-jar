@@ -83,7 +83,7 @@ require __DIR__ . '/../../templates/admin_header.php';
                             </button>
                         </form>
                         <form method="post" action="/admin/jar-delete.php" class="inline"
-                              onsubmit="return confirm('Delete this jar and all its messages?');">
+                            data-confirm="Delete &quot;<?= e($jar['name']) ?>&quot;? This cannot be undone.">
                             <?= csrf_field() ?>
                             <input type="hidden" name="id" value="<?= (int)$jar['id'] ?>">
                             <button type="submit" class="link danger">Delete</button>

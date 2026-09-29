@@ -1,20 +1,128 @@
 (() => {
     'use strict';
 
-    // Apply jar colors from data-jar-color attributes on any page.
-    // This runs BEFORE the .jar-page check below, so it also fires
-    // on the dashboard where there is no .jar-page element.
-    //
-    // Why JS instead of an inline style="--jar-color: ..." attribute?
-    // Some browsers resolve custom properties in the initial HTML
-    // against a stylesheet that isn't fully parsed yet, decide the
-    // property has no valid value, and cache that. Setting the same
-    // value later via setProperty() reliably re-resolves it.
+    // ── Apply jar colors from data-jar-color attributes ──────────
+    // Runs BEFORE the .jar-page check so it also fires on the
+    // dashboard where there is no .jar-page element.
     document.querySelectorAll('[data-jar-color]').forEach(function (el) {
         var c = el.dataset.jarColor;
         if (c) el.style.setProperty('--jar-color', c);
     });
 
+    // ── Confirm modal ────────────────────────────────────────────
+    // Any form with data-confirm="..." shows a themed modal
+    // before submitting. Replaces native window.confirm().
+    (function () {
+        var modal = document.getElementById('confirm-modal');
+        if (!modal) return;
+
+        var messageEl   = modal.querySelector('#confirm-message');
+        var okBtn       = modal.querySelector('[data-confirm-ok]');
+        var pendingForm = null;
+        var lastFocus   = null;
+
+        function open(form) {
+            pendingForm = form;
+            messageEl.textContent = form.dataset.confirm || 'Are you sure?';
+            lastFocus = document.activeElement;
+            modal.hidden = false;
+            okBtn.focus();
+        }
+
+        function close() {
+            modal.hidden = true;
+            pendingForm = null;
+            if (lastFocus && lastFocus.focus) lastFocus.focus();
+        }
+
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            if (!form.dataset.confirm) return;
+            if (form.dataset.confirmed === '1') return;
+            e.preventDefault();
+            open(form);
+        });
+
+        okBtn.addEventListener('click', function () {
+            if (!pendingForm) return close();
+            pendingForm.dataset.confirmed = '1';
+            pendingForm.submit();
+        });
+
+        modal.querySelectorAll('[data-confirm-cancel]').forEach(function (el) {
+            el.addEventListener('click', close);
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (!modal.hidden && e.key === 'Escape') close();
+        });
+    })();
+
+    // ── Emoji picker ─────────────────────────────────────────────
+    // Curated set — no external library. Click the trigger
+    // button to open, click a cell to insert, click outside
+    // or press Escape to close.
+    (function () {
+        var input   = document.getElementById('emoji-input');
+        var trigger = document.getElementById('emoji-trigger');
+        var picker  = document.getElementById('emoji-picker');
+        if (!input || !trigger || !picker) return;
+
+        var groups = {
+            'love':     ['❤️','💖','💗','💕','💞','💓','💘','💝','💟','🩷','💌','💋','😘','🥰','😍','🤍','🖤','💜','💙','💚','💛','🧡'],
+            'feelings': ['🥹','🥺','😊','😄','🥲','😢','😭','😔','😞','😡','😤','🙁','🤗','🫂','🙏','🫶','😴','🥱','😪'],
+            'cute':     ['🐻','🐰','🐱','🐶','🦊','🐹','🐼','🐨','🐸','🐣','🦋','🌸','🌷','🌹','🌻','🌼','💐','🍓','🍰','🧸'],
+            'cosmic':   ['🌙','⭐','✨','🌟','💫','🌠','☀️','🌈','⛅','🌤️','🪐','🌌'],
+            'moments':  ['🌅','🌄','🍵','☕','🎂','🎁','🎉','🎈','📸','🎵','🎶','📚','🍽️','🍕','🍦','🥂'],
+            'symbols':  ['♡','♥','❀','✿','✦','✧','∞','☾','☽','♪','♫','❣️','💯'],
+        };
+
+        function render() {
+            var html = '';
+            Object.keys(groups).forEach(function (name) {
+                html += '<div class="emoji-group">';
+                html += '<div class="emoji-group-title">' + name + '</div>';
+                html += '<div class="emoji-group-grid">';
+                groups[name].forEach(function (ch) {
+                    html += '<button type="button" class="emoji-cell" data-emoji="' + ch + '">' + ch + '</button>';
+                });
+                html += '</div></div>';
+            });
+            picker.innerHTML = html;
+        }
+
+        function open()  { picker.hidden = false; }
+        function close() { picker.hidden = true; }
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            picker.hidden ? open() : close();
+        });
+
+        picker.addEventListener('click', function (e) {
+            var btn = e.target.closest('.emoji-cell');
+            if (!btn) return;
+            input.value = btn.dataset.emoji;
+            close();
+            input.focus();
+        });
+
+        document.addEventListener('click', function (e) {
+            if (picker.hidden) return;
+            if (picker.contains(e.target)) return;
+            if (trigger.contains(e.target)) return;
+            close();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (!picker.hidden && e.key === 'Escape') close();
+        });
+
+        render();
+    })();
+
+    // ── Jar page draw logic ──────────────────────────────────────
     const page = document.querySelector('.jar-page');
     if (!page) return;
 
@@ -29,16 +137,13 @@
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const OPEN_MS    = reduceMotion ? 0 : 600;  // must match CSS .is-opening duration
-    const PRE_DELAY  = reduceMotion ? 0 : 180;  // pause between shake and open
+    const OPEN_MS   = reduceMotion ? 0 : 600;
+    const PRE_DELAY = reduceMotion ? 0 : 180;
 
     let drawing   = false;
     let firstDraw = true;
 
-    /* ── State helpers ───────────────────────────────── */
-
     function showJar() {
-        // Put the jar back. Called at the start of every draw after the first.
         stage.hidden = false;
         stage.classList.remove('is-shaking', 'is-opening');
         slot.hidden = true;
@@ -46,12 +151,9 @@
     }
 
     function hideJar() {
-        // Jar is fully gone; only the message card should be visible.
         stage.hidden = true;
         stage.classList.remove('is-shaking', 'is-opening');
     }
-
-    /* ── Animation helpers ───────────────────────────── */
 
     function shake() {
         if (reduceMotion) return;
@@ -66,29 +168,23 @@
         return new Promise((resolve) => setTimeout(resolve, OPEN_MS));
     }
 
-    /* ── Main draw routine ───────────────────────────── */
-
     async function draw() {
         if (drawing) return;
         drawing = true;
 
-        // Disable both triggers while the request is in flight.
         jarBtn.disabled  = true;
         drawBtn.disabled = true;
 
-        // If jar is hidden (2nd+ draw), bring it back first.
         if (stage.hidden) {
             showJar();
             await new Promise(requestAnimationFrame);
         }
 
-        // Shake, then a small pause, then pop the lid.
         shake();
         await new Promise((r) => setTimeout(r, PRE_DELAY));
 
         const openPromise = openJar();
 
-        // Fire the request in parallel so it doesn't add latency.
         const reqPromise = (async () => {
             const body = new URLSearchParams();
             body.set('jar_id', jarId);
@@ -112,7 +208,6 @@
         try {
             const [data] = await Promise.all([reqPromise, openPromise]);
 
-            // Render the returned content into the slot.
             if (!data.ok) {
                 slot.innerHTML = '<article class="msg-card">'
                     + '<p class="muted" style="text-align:center;">'
@@ -124,7 +219,6 @@
                 slot.innerHTML = data.html;
             }
 
-            // Jar is now gone; slot becomes the only visible element.
             hideJar();
             slot.hidden = false;
 
@@ -134,8 +228,6 @@
                 slot.classList.add('is-revealed');
             }
 
-            // After first successful draw, reveal the actions container
-            // and enable the button.
             if (firstDraw) {
                 actions.hidden = false;
                 firstDraw = false;
@@ -143,7 +235,6 @@
             drawBtn.disabled = false;
         } catch (err) {
             console.error(err);
-            // On failure, put the jar back so she can try again.
             showJar();
             drawBtn.disabled = false;
             jarBtn.disabled  = false;
