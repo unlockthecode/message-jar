@@ -959,3 +959,52 @@ h2 { font-size: 1.15rem; margin-top: 1.5rem; }
     }
     .emoji-group-grid { grid-template-columns: repeat(7, 1fr); }
 }
+
+.image-field { position: relative; }
+
+.image-input-wrap {
+    display: flex;
+    gap: .5rem;
+    align-items: stretch;
+}
+
+.image-input-wrap input[type=url] {
+    flex: 1;
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .6rem 1rem;
+    border: 2px solid var(--pink);
+    background: #fff;
+    color: var(--pink-deep);
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+    font-family: "Quicksand", system-ui, sans-serif;
+    cursor: pointer;
+    transition: background .15s var(--ease), transform .15s var(--ease);
+    white-space: nowrap;
+}
+.btn-secondary:hover {
+    background: var(--pink-soft);
+    transform: translateY(-1px);
+}
+.btn-secondary:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+.image-preview img {
+    display: block;
+}
+
+@media (max-width: 560px) {
+    .image-input-wrap {
+        flex-direction: column;
+    }
+    .image-input-wrap .btn-secondary {
+        justify-content: center;
+    }
+}

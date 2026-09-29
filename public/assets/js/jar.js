@@ -9,6 +9,103 @@
         if (c) el.style.setProperty('--jar-color', c);
     });
 
+    // ── ImageKit upload widget (admin message editor) ──────────
+    (function () {
+        var urlInput  = document.getElementById('image-url-input');
+        var fileInput = document.getElementById('image-file-input');
+        var uploadBtn = document.getElementById('image-upload-btn');
+        var statusEl  = document.getElementById('image-upload-status');
+        var previewEl = document.getElementById('image-upload-preview');
+        var formEl    = document.querySelector('form[data-csrf]');
+    
+        if (!urlInput || !fileInput || !uploadBtn) return;
+    
+        var csrf = formEl ? formEl.dataset.csrf : '';
+    
+        function setStatus(msg, isError) {
+            if (!statusEl) return;
+            statusEl.textContent = msg;
+            statusEl.style.color = isError ? '#a4133c' : '';
+        }
+    
+        function showPreview(url) {
+            if (!previewEl) return;
+            previewEl.innerHTML = '';
+            if (!url) return;
+            var img = document.createElement('img');
+            img.src = url;
+            img.alt = '';
+            img.loading = 'lazy';
+            img.style.maxWidth = '200px';
+            img.style.borderRadius = '10px';
+            img.style.marginTop = '.5rem';
+            img.style.border = '2px solid var(--pink-soft)';
+            previewEl.appendChild(img);
+        }
+    
+        urlInput.addEventListener('input', function () {
+            showPreview(urlInput.value.trim());
+        });
+        showPreview(urlInput.value.trim());
+    
+        uploadBtn.addEventListener('click', function () {
+            fileInput.click();
+        });
+    
+        fileInput.addEventListener('change', async function () {
+            var file = fileInput.files && fileInput.files[0];
+            if (!file) return;
+        
+            setStatus('Requesting upload credentials…');
+            uploadBtn.disabled = true;
+        
+            try {
+                var authRes = await fetch('/admin/imagekit-auth.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-Token': csrf },
+                });
+                if (!authRes.ok) throw new Error('Auth failed: ' + authRes.status);
+                var auth = await authRes.json();
+                if (!auth.ok) throw new Error(auth.error || 'Auth failed');
+            
+                setStatus('Uploading…');
+            
+                var fd = new FormData();
+                fd.append('file', file);
+                fd.append('fileName', file.name);
+                fd.append('publicKey', auth.publicKey);
+                fd.append('token', auth.token);
+                fd.append('expire', String(auth.expire));
+                fd.append('signature', auth.signature);
+                fd.append('useUniqueFileName', 'true');
+                fd.append('folder', '/messages');
+            
+                var upRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+                    method: 'POST',
+                    body: fd,
+                });
+                if (!upRes.ok) {
+                    var errText = await upRes.text();
+                    throw new Error('Upload failed: ' + errText.slice(0, 120));
+                }
+                var up = await upRes.json();
+            
+                if (!up.url) throw new Error('Upload succeeded but no URL returned');
+            
+                urlInput.value = up.url;
+                showPreview(up.url);
+                setStatus('Uploaded. URL saved when you click Save.');
+            } catch (err) {
+                console.error(err);
+                setStatus(err.message || 'Upload failed', true);
+            } finally {
+                uploadBtn.disabled = false;
+                fileInput.value = '';
+            }
+        });
+    })();
+
     // ── Confirm modal ────────────────────────────────────────────
     // Any form with data-confirm="..." shows a themed modal
     // before submitting. Replaces native window.confirm().

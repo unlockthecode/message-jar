@@ -74,7 +74,8 @@ require __DIR__ . '/../../templates/admin_header.php';
         </div>
     <?php endif; ?>
 
-    <form method="post" action="/admin/message-save.php" class="form">
+    <form method="post" action="/admin/message-save.php" class="form"
+      data-csrf="<?= e(csrf_token()) ?>">
         <?= csrf_field() ?>
         <input type="hidden" name="id" value="<?= (int)$msg['id'] ?>">
         <input type="hidden" name="jar_id" value="<?= (int)$jar['id'] ?>">
@@ -85,11 +86,20 @@ require __DIR__ . '/../../templates/admin_header.php';
                       placeholder="Baby, I know you're missing me right now..."><?= e((string)$msg['body']) ?></textarea>
         </label>
 
-        <label>
-            Image URL <span class="muted small">(optional, must be hosted on ImageKit)</span>
-            <input type="url" name="image_url" maxlength="500"
-                   value="<?= e((string)($msg['image_url'] ?? '')) ?>"
-                   placeholder="https://ik.imagekit.io/yourid/photo.jpg">
+        <label class="image-field">
+            Image <span class="muted small">(optional)</span>
+            <div class="image-input-wrap">
+                <input type="url" name="image_url" id="image-url-input" maxlength="500"
+                       value="<?= e((string)($msg['image_url'] ?? '')) ?>"
+                       placeholder="https://ik.imagekit.io/... or upload →">
+                <input type="file" id="image-file-input" accept="image/*"
+                       style="display:none;">
+                <button type="button" class="btn-secondary" id="image-upload-btn">
+                    Upload
+                </button>
+            </div>
+            <div id="image-upload-status" class="muted small"></div>
+            <div id="image-upload-preview" class="image-preview"></div>
         </label>
 
         <label>

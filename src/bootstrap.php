@@ -128,7 +128,7 @@ $csp = implode('; ', [
     "style-src 'self' https://fonts.googleapis.com",
     "img-src 'self' https://ik.imagekit.io data:",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self'",
+    "connect-src 'self' https://upload.imagekit.io",
     "frame-src https://www.youtube-nocookie.com",
     "frame-ancestors 'none'",
     "form-action 'self'",
@@ -159,3 +159,4 @@ require_once __DIR__ . '/messages.php';
 require_once __DIR__ . '/render.php';
 require_once __DIR__ . '/link_labels.php';
 require_once __DIR__ . '/admin_stats.php';
+require_once __DIR__ . '/imagekit.php';
