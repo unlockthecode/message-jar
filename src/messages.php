@@ -119,7 +119,6 @@ function message_validate(array $in, int $defaultJarId = 0): array
             $errors[] = 'Image URL must be a valid URL.';
         } else {
             $scheme = strtolower((string)parse_url($imageUrl, PHP_URL_SCHEME));
-            $host   = strtolower((string)parse_url($imageUrl, PHP_URL_HOST));
             if ($scheme !== 'https') {
                 $errors[] = 'Image URL must use HTTPS.';
             } elseif (!imagekit_url_ok($imageUrl)) {
@@ -129,8 +128,8 @@ function message_validate(array $in, int $defaultJarId = 0): array
     }
 
     // youtube_url — accept a URL or an ID. Store only the ID.
-    $youtubeIn  = trim((string)($in['youtube_url'] ?? ''));
-    $youtubeId  = null;
+    $youtubeIn = trim((string)($in['youtube_url'] ?? ''));
+    $youtubeId = null;
     if ($youtubeIn !== '') {
         $youtubeId = youtube_extract_id($youtubeIn);
         if ($youtubeId === null) {
@@ -177,7 +176,6 @@ function imagekit_host_ok(string $host): bool
     return $host === 'ik.imagekit.io';
 }
 
-// Stricter version, if you want it:
 /**
  * Stricter than imagekit_host_ok: the URL must be under YOUR endpoint.
  * Rejects other people's ImageKit URLs and any non-ImageKit host.
@@ -218,71 +216,102 @@ function normalize_datetime(string $value, array &$errors, string $label): ?stri
 }
 
 /**
- * Pick a random eligible message for the given jar & user.
+ * Pick the next message for the given jar and user.
  *
- * Returns the message row, or null if none are eligible.
+ * Strategy (three tiers, tried in order):
  *
- * Strategy:
- *   1. Fetch eligible message IDs (active, in jar, currently unlocked, not expired).
- *   2. Fetch IDs already viewed by this user for this jar in the last 30 days.
- *   3. Prefer the set difference; fall back to the whole eligible set if empty.
- *   4. Pick one at random, insert a view, return the row.
+ *   1. NEVER SEEN — messages this user has never viewed in this jar,
+ *      oldest first. Guarantees every message is seen at least once
+ *      before any repeat, and that newly added messages enter the
+ *      rotation immediately.
+ *
+ *   2. NOT SEEN RECENTLY — messages whose last view by this user was
+ *      more than 30 days ago, ordered by oldest last-view first. After
+ *      the unseen pool empties, this keeps the experience fresh by
+ *      favouring the messages she hasn't seen in the longest time.
+ *
+ *   3. FULLY RE-CYCLED — every eligible message has been viewed within
+ *      the last 30 days. Pick one at random.
+ *
+ * Returns the message row, or null if there are no eligible messages.
  */
 function draw_message(int $jarId, int $userId): ?array
 {
     $pdo = db();
 
-    // 1. Eligible messages
+    // 1. Eligible messages, oldest first.
     $stmt = $pdo->prepare(
-        'SELECT id FROM messages
+        'SELECT id, jar_id, body, image_url, youtube_id, external_url,
+                unlock_at, expires_at, is_active, created_at
+         FROM messages
          WHERE jar_id = ?
            AND is_active = 1
            AND (unlock_at IS NULL OR unlock_at <= NOW())
-           AND (expires_at IS NULL OR expires_at > NOW())'
+           AND (expires_at IS NULL OR expires_at > NOW())
+         ORDER BY created_at ASC, id ASC'
     );
     $stmt->execute([$jarId]);
-    $eligible = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+    $eligible = $stmt->fetchAll();
 
     if (!$eligible) {
         return null;
     }
 
-    // 2. Recently viewed by this user for this jar
+    // 2. Per-message last-view time for this user, in this jar.
+    //    Messages with no view row are absent from the map.
     $stmt = $pdo->prepare(
-        'SELECT DISTINCT v.message_id
-         FROM message_views v
-         JOIN messages m ON m.id = v.message_id
-         WHERE v.user_id = ?
-           AND m.jar_id = ?
-           AND v.viewed_at > (NOW() - INTERVAL 30 DAY)'
+        'SELECT m.id AS message_id, MAX(v.viewed_at) AS last_seen
+         FROM messages m
+         LEFT JOIN message_views v
+                ON v.message_id = m.id AND v.user_id = ?
+         WHERE m.jar_id = ?
+         GROUP BY m.id'
     );
     $stmt->execute([$userId, $jarId]);
-    $recent = array_map('intval', array_column($stmt->fetchAll(), 'message_id'));
-
-    // 3. Prefer unseen
-    $unseen = array_values(array_diff($eligible, $recent));
-    $pool   = $unseen ?: $eligible;
-
-    // 4. Random pick
-    $pickedId = $pool[random_int(0, count($pool) - 1)];
-
-    $stmt = $pdo->prepare(
-        'SELECT id, jar_id, body, image_url, youtube_id, external_url,
-                unlock_at, expires_at, is_active
-         FROM messages WHERE id = ? LIMIT 1'
-    );
-    $stmt->execute([$pickedId]);
-    $row = $stmt->fetch();
-    if (!$row) {
-        return null; // should never happen, but be defensive
+    $lastSeen = [];
+    foreach ($stmt->fetchAll() as $row) {
+        if ($row['last_seen'] !== null) {
+            $lastSeen[(int)$row['message_id']] = (string)$row['last_seen'];
+        }
     }
 
-    // 5. Record the view
+    // 3. Pick the next message using the three-tier strategy.
+    $cutoff30d = time() - (30 * 86400);
+    $chosen    = null;
+
+    // Tier 1: never seen, oldest first.
+    foreach ($eligible as $m) {
+        if (!isset($lastSeen[(int)$m['id']])) {
+            $chosen = $m;
+            break;
+        }
+    }
+
+    // Tier 2: not seen in 30+ days, oldest last-view first.
+    if ($chosen === null) {
+        $bestTs = null;
+        foreach ($eligible as $m) {
+            $ts = strtotime($lastSeen[(int)$m['id']]);
+            if ($ts === false || $ts > $cutoff30d) {
+                continue;
+            }
+            if ($bestTs === null || $ts < $bestTs) {
+                $bestTs = $ts;
+                $chosen = $m;
+            }
+        }
+    }
+
+    // Tier 3: everything is recent — pick random.
+    if ($chosen === null) {
+        $chosen = $eligible[random_int(0, count($eligible) - 1)];
+    }
+
+    // 4. Record the view.
     $ins = $pdo->prepare(
         'INSERT INTO message_views (user_id, message_id) VALUES (?, ?)'
     );
-    $ins->execute([$userId, $pickedId]);
+    $ins->execute([$userId, (int)$chosen['id']]);
 
-    return $row;
+    return $chosen;
 }
-
