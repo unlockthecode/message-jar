@@ -1008,3 +1008,5 @@ h2 { font-size: 1.15rem; margin-top: 1.5rem; }
         justify-content: center;
     }
 }
+
+.hidden-file-input { display: none; }

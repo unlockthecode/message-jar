@@ -92,8 +92,7 @@ require __DIR__ . '/../../templates/admin_header.php';
                 <input type="url" name="image_url" id="image-url-input" maxlength="500"
                        value="<?= e((string)($msg['image_url'] ?? '')) ?>"
                        placeholder="https://ik.imagekit.io/... or upload →">
-                <input type="file" id="image-file-input" accept="image/*"
-                       style="display:none;">
+                <input type="file" id="image-file-input" accept="image/*" class="hidden-file-input">
                 <button type="button" class="btn-secondary" id="image-upload-btn">
                     Upload
                 </button>
