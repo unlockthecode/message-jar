@@ -62,9 +62,11 @@ if (APP_IS_PROD) {
 
 // ── 3. Timezone ─────────────────────────────────────────────
 date_default_timezone_set('UTC');
-// Display timezone for user-facing output.
-// Stored timestamps are UTC; convert only when rendering.
-define('DISPLAY_TZ', 'Asia/Manila');
+
+// Fallback display timezone. Each visitor's browser timezone is
+// detected client-side and stored in a cookie; that value wins
+// when present and valid. This constant is the fallback.
+define('DISPLAY_TZ', $cfg['app']['display_tz'] ?? 'Asia/Manila');
 
 // ── 4. HTTPS enforcement (production only) ──────────────────
 if (APP_IS_PROD) {

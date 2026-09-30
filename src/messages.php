@@ -191,10 +191,16 @@ function imagekit_url_ok(string $url): bool
 }
 
 /**
- * Accept '' (=> null) or a 'Y-m-d\TH:i' string (from <input type="datetime-local">)
- * or a 'Y-m-d H:i:s' string (from older browsers). Anything else is an error.
+ * The admin's input is interpreted in the SITE timezone (DISPLAY_TZ,
+ * from .env), NOT the visitor's timezone. This is deliberate:
  *
- * Returns 'Y-m-d H:i:s' or null. Errors accumulate into $errors.
+ *   - Display follows the visitor's browser timezone.
+ *   - Scheduling (unlock/expires) is anchored to the site's
+ *     timezone, so "9 AM" always means "9 AM for the recipient",
+ *     regardless of where the admin is editing from.
+ *
+ * This keeps a message scheduled from a trip abroad unlocking at
+ * the intended local hour back home.
  */
 function normalize_datetime(string $value, array &$errors, string $label): ?string
 {
@@ -205,9 +211,15 @@ function normalize_datetime(string $value, array &$errors, string $label): ?stri
 
     $formats = ['Y-m-d\TH:i', 'Y-m-d\TH:i:s', 'Y-m-d H:i', 'Y-m-d H:i:s'];
     foreach ($formats as $fmt) {
-        $dt = DateTimeImmutable::createFromFormat($fmt, $value);
+        $dt = DateTimeImmutable::createFromFormat(
+            $fmt,
+            $value,
+            new DateTimeZone(DISPLAY_TZ)
+        );
         if ($dt !== false && $dt->format($fmt) === $value) {
-            return $dt->format('Y-m-d H:i:s');
+            return $dt
+                ->setTimezone(new DateTimeZone('UTC'))
+                ->format('Y-m-d H:i:s');
         }
     }
 

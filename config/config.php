@@ -65,6 +65,7 @@ function config(): array
             'debug' => filter_var($env['APP_DEBUG'] ?? 'false', FILTER_VALIDATE_BOOL),
             'url'   => $env['APP_URL']   ?? '',
             'root'  => $root,
+            'display_tz' => $env['DISPLAY_TZ'] ?? 'Asia/Manila',
         ],
         'db' => [
             'host' => $env['DB_HOST'] ?? '127.0.0.1',

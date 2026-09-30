@@ -1,6 +1,28 @@
 (() => {
     'use strict';
 
+    // ── Detect visitor timezone and store it in a cookie ────────
+    // The server reads this cookie and formats timestamps in the
+    // visitor's local timezone. Falls back to DISPLAY_TZ if absent.
+    (function () {
+        try {
+            if (typeof Intl === 'undefined' || !Intl.DateTimeFormat) return;
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (!tz) return;
+        
+            // Only write the cookie if it's different from what's there,
+            // so we don't bust caches unnecessarily.
+            var existing = document.cookie
+                .split('; ')
+                .find(function (c) { return c.indexOf('visitor_tz=') === 0; });
+            var current = existing ? decodeURIComponent(existing.slice(11)) : '';
+            if (current === tz) return;
+        
+            document.cookie = 'visitor_tz=' + encodeURIComponent(tz)
+                + ';path=/;max-age=31536000;SameSite=Lax';
+        } catch (e) { /* noop */ }
+    })();
+
     // ── Apply jar colors from data-jar-color attributes ──────────
     // Runs BEFORE the .jar-page check so it also fires on the
     // dashboard where there is no .jar-page element.

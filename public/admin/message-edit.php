@@ -143,13 +143,15 @@ require __DIR__ . '/../../templates/admin_header.php';
 </main>
 <?php
 /**
- * Convert 'Y-m-d H:i:s' → 'Y-m-d\TH:i' for <input type="datetime-local">.
+ * Convert a UTC MySQL DATETIME string to 'Y-m-d\TH:i' in the
+ * display timezone, for use in <input type="datetime-local">.
  * Empty stays empty.
  */
 function datetime_local_value(string $dbValue): string
 {
-    if ($dbValue === '') return '';
-    $ts = strtotime($dbValue);
-    return $ts ? date('Y-m-d\TH:i', $ts) : '';
+    if ($dbValue === '') {
+        return '';
+    }
+    return format_display_time($dbValue, 'Y-m-d\TH:i');
 }
 require __DIR__ . '/../../templates/footer.php';

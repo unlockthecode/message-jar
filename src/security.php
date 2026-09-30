@@ -8,9 +8,12 @@ declare(strict_types=1);
  * TIMEZONE POLICY:
  *   - Everything is stored in UTC in the database.
  *   - PHP's default timezone is UTC (set in bootstrap.php).
- *   - Timestamps are converted to DISPLAY_TZ only when rendering.
+ *   - Display times use display_tz(), which prefers the visitor's
+ *     browser timezone (from a cookie) and falls back to DISPLAY_TZ.
+ *   - Scheduling input (unlock/expires) is anchored to DISPLAY_TZ,
+ *     never the visitor's timezone.
  *   - Use format_display_time() for absolute output,
- *     now_display() for "current time in the user's timezone",
+ *     now_display() for "current time in the display timezone",
  *     and human_time_ago() for relative times.
  */
 
@@ -103,16 +106,32 @@ function is_https_url(?string $url): bool
 }
 
 /**
- * Format a UTC timestamp (MySQL DATETIME string) for display in the
- * site's DISPLAY_TZ. Returns '' for null/empty input.
+ * Determine the timezone to use for display.
+ *
+ * Priority:
+ *   1. The visitor's browser timezone, stored in the visitor_tz
+ *      cookie (set by assets/js/jar.js on first page load).
+ *   2. The DISPLAY_TZ constant (from .env; default Asia/Manila).
+ *
+ * The cookie value is validated against PHP's list of known
+ * timezone identifiers, so a malicious cookie can't inject
+ * arbitrary values.
+ */
+function display_tz(): string
+{
+    $candidate = (string)($_COOKIE['visitor_tz'] ?? '');
+    if ($candidate !== '' && in_array($candidate, DateTimeZone::listIdentifiers(), true)) {
+        return $candidate;
+    }
+    return DISPLAY_TZ;
+}
+
+/**
+ * Format a UTC timestamp (MySQL DATETIME string) for display.
+ * Returns '' for null/empty input.
  *
  * $dbValue must be a MySQL DATETIME in UTC (e.g. "2026-09-30 08:15:00").
  * $format is any PHP date() format string.
- *
- * Examples:
- *   format_display_time($row['created_at'])             → "Sep 30, 2026 16:15"
- *   format_display_time($row['unlock_at'], 'M j, Y')    → "Dec 1, 2026"
- *   format_display_time($row['expires_at'], 'M j, Y H:i')
  */
 function format_display_time(?string $dbValue, string $format = 'M j, Y H:i'): string
 {
@@ -126,19 +145,17 @@ function format_display_time(?string $dbValue, string $format = 'M j, Y H:i'): s
         return '';
     }
 
-    $dt = $dt->setTimezone(new DateTimeZone(DISPLAY_TZ));
+    $dt = $dt->setTimezone(new DateTimeZone(display_tz()));
     return $dt->format($format);
 }
 
 /**
  * Return "now" in the display timezone as a DateTimeImmutable.
- * Useful when you need to compute values that depend on today's
- * date in the user's timezone (e.g. "is this timestamp today?").
  */
 function now_display(): DateTimeImmutable
 {
     return (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-        ->setTimezone(new DateTimeZone(DISPLAY_TZ));
+        ->setTimezone(new DateTimeZone(display_tz()));
 }
 
 /**
@@ -146,9 +163,10 @@ function now_display(): DateTimeImmutable
  *
  * Input must be a MySQL DATETIME string stored in UTC.
  *
- * This implementation parses the input explicitly as UTC and
- * compares against the current UTC time, so it works correctly
- * regardless of what PHP's default timezone is set to.
+ * Note: relative times are timezone-independent. "5 minutes ago"
+ * is the same duration in every timezone. We only need the
+ * visitor timezone for the fallback that shows a calendar date
+ * ("Apr 12").
  */
 function human_time_ago(string $dbDatetime): string
 {

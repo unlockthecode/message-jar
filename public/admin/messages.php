@@ -60,7 +60,7 @@ require __DIR__ . '/../../templates/admin_header.php';
                         <?php endif; ?>
 
                         <?php if ($locked): ?>
-                            <span class="badge">Unlocks <?= e(date('M j, Y H:i', $unlockTs)) ?></span>
+                            <span class="badge">Unlocks <?= e(format_display_time($m['unlock_at'])) ?></span>
                         <?php endif; ?>
                         <?php if ($expired): ?>
                             <span class="badge off">Expired</span>
