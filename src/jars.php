@@ -12,7 +12,7 @@ declare(strict_types=1);
 function jars_active(): array
 {
     $stmt = db()->query(
-        'SELECT id, name, description, emoji, theme_color, display_order
+        'SELECT id, name, category, description, emoji, theme_color, display_order
          FROM jars
          WHERE is_active = 1
          ORDER BY display_order ASC, id ASC'
@@ -26,11 +26,15 @@ function jars_active(): array
  */
 function jars_all_with_counts(): array
 {
-    $sql = 'SELECT j.id, j.name, j.description, j.emoji, j.theme_color,
+    $sql = "SELECT j.id, j.name, j.category, j.description, j.emoji, j.theme_color,
                    j.is_active, j.display_order, j.created_at, j.updated_at,
                    (SELECT COUNT(*) FROM messages m WHERE m.jar_id = j.id) AS message_count
             FROM jars j
-            ORDER BY j.display_order ASC, j.id ASC';
+            ORDER BY
+                (j.category IS NULL OR j.category = '') ASC,
+                j.category ASC,
+                j.display_order ASC,
+                j.id ASC";
     return db()->query($sql)->fetchAll();
 }
 
@@ -40,7 +44,7 @@ function jars_all_with_counts(): array
 function jar_find(int $id): ?array
 {
     $stmt = db()->prepare(
-        'SELECT id, name, description, emoji, theme_color,
+        'SELECT id, name, category, description, emoji, theme_color,
                 is_active, display_order, created_at, updated_at
          FROM jars WHERE id = ? LIMIT 1'
     );
@@ -64,11 +68,12 @@ function jar_next_order(): int
 function jar_create(array $data): int
 {
     $stmt = db()->prepare(
-        'INSERT INTO jars (name, description, emoji, theme_color, is_active, display_order)
-         VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO jars (name, category, description, emoji, theme_color, is_active, display_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $data['name'],
+        $data['category']    ?: null,
         $data['description'] ?: null,
         $data['emoji']       ?: null,
         $data['theme_color'] ?: null,
@@ -85,12 +90,13 @@ function jar_update(int $id, array $data): void
 {
     $stmt = db()->prepare(
         'UPDATE jars
-         SET name = ?, description = ?, emoji = ?, theme_color = ?,
+         SET name = ?, category = ?, description = ?, emoji = ?, theme_color = ?,
              is_active = ?, display_order = ?
          WHERE id = ?'
     );
     $stmt->execute([
         $data['name'],
+        $data['category']    ?: null,
         $data['description'] ?: null,
         $data['emoji']       ?: null,
         $data['theme_color'] ?: null,
@@ -189,6 +195,11 @@ function jar_validate(array $in): array
         $errors[] = 'Name must be 100 characters or fewer.';
     }
 
+    $category = trim((string)($in['category'] ?? ''));
+    if (mb_strlen($category) > 50) {
+        $errors[] = 'Category must be 50 characters or fewer.';
+    }
+
     $description = trim((string)($in['description'] ?? ''));
     if (mb_strlen($description) > 255) {
         $errors[] = 'Description must be 255 characters or fewer.';
@@ -214,10 +225,68 @@ function jar_validate(array $in): array
 
     return [[
         'name'          => $name,
+        'category'      => $category,
         'description'   => $description,
         'emoji'         => $emoji,
         'theme_color'   => $color,
         'display_order' => $order,
         'is_active'     => $active,
     ], $errors];
+}
+/**
+ * List every distinct category currently in use, alphabetically.
+ * Used to populate the datalist on the jar edit form.
+ */
+function jar_categories(): array
+{
+    $stmt = db()->query(
+        "SELECT DISTINCT category FROM jars
+         WHERE category IS NOT NULL AND category != ''
+         ORDER BY category ASC"
+    );
+    return array_column($stmt->fetchAll(), 'category');
+}
+/**
+ * Active jars grouped by category, ready for the dashboard.
+ *
+ * Returns an array of groups in this shape:
+ *   [
+ *     ['label' => 'Feelings',        'slug' => 'feelings',        'jars' => [...]],
+ *     ['label' => 'Time of Day',     'slug' => 'time-of-day',     'jars' => [...]],
+ *     ['label' => 'Uncategorized',   'slug' => '__uncategorized__', 'jars' => [...]],
+ *   ]
+ *
+ * Empty categories (no active jars) are omitted entirely.
+ * Uncategorized jars are always last.
+ */
+function jars_active_grouped(): array
+{
+    $jars = jars_active(); // existing function, already filters is_active = 1
+
+    $groups = [];
+    foreach ($jars as $jar) {
+        $cat = trim((string)($jar['category'] ?? ''));
+        $key = $cat !== '' ? $cat : '__uncategorized__';
+        $groups[$key][] = $jar;
+    }
+
+    $keys = array_keys($groups);
+    usort($keys, function ($a, $b) {
+        if ($a === '__uncategorized__') return 1;
+        if ($b === '__uncategorized__') return -1;
+        return strcasecmp($a, $b);
+    });
+
+    $result = [];
+    foreach ($keys as $key) {
+        $label = $key === '__uncategorized__' ? 'Uncategorized' : $key;
+        $slug  = 'dash-' . substr(md5($label), 0, 12);
+        $result[] = [
+            'label' => $label,
+            'slug'  => $slug,
+            'jars'  => $groups[$key],
+        ];
+    }
+
+    return $result;
 }

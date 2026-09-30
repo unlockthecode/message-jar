@@ -34,6 +34,7 @@ CREATE TABLE users (
 CREATE TABLE jars (
     id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
     name            VARCHAR(100) NOT NULL,
+    category        VARCHAR(50)  NULL DEFAULT NULL,
     description     VARCHAR(255) NULL DEFAULT NULL,
     emoji           VARCHAR(16)  NULL DEFAULT NULL,
     theme_color     CHAR(7)      NULL DEFAULT NULL,      -- e.g. #ff8fab

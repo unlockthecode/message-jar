@@ -18,6 +18,7 @@ if ($isNew) {
     $jar = [
         'id'            => 0,
         'name'          => '',
+        'category'      => '',
         'description'   => '',
         'emoji'         => '',
         'theme_color'   => '#ff8fab',
@@ -66,6 +67,18 @@ require __DIR__ . '/../../templates/admin_header.php';
             Name
             <input type="text" name="name" required maxlength="100"
                    value="<?= e((string)$jar['name']) ?>">
+        </label>
+
+        <label>
+            Category <span class="muted small">(optional — used to group jars in the admin list)</span>
+            <input type="text" name="category" list="category-list" maxlength="50"
+                   value="<?= e((string)($jar['category'] ?? '')) ?>"
+                   placeholder="e.g. Feelings, Time of Day, Milestones">
+            <datalist id="category-list">
+                <?php foreach (jar_categories() as $cat): ?>
+                    <option value="<?= e($cat) ?>">
+                <?php endforeach; ?>
+            </datalist>
         </label>
 
         <label>

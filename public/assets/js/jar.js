@@ -1,7 +1,6 @@
 (() => {
     'use strict';
-
-    // ── Detect visitor timezone and store it in a cookie ────────
+    // Detect visitor timezone and store it in a cookie
     // The server reads this cookie and formats timestamps in the
     // visitor's local timezone. Falls back to DISPLAY_TZ if absent.
     (function () {
@@ -21,6 +20,45 @@
             document.cookie = 'visitor_tz=' + encodeURIComponent(tz)
                 + ';path=/;max-age=31536000;SameSite=Lax';
         } catch (e) { /* noop */ }
+    })();
+    // ── Collapsible jar groups (admin) ─────────────────────────
+    (function () {
+        var groups = document.querySelectorAll('.jar-group');
+        if (!groups.length) return;
+
+        groups.forEach(function (group) {
+            var toggle = group.querySelector('.jar-group-toggle');
+            var body   = group.querySelector('.jar-group-body');
+            if (!toggle || !body) return;
+
+            var key = group.dataset.storeKey || '';
+
+            // Restore persisted state.
+            var collapsed = false;
+            try {
+                collapsed = localStorage.getItem(key) === '1';
+            } catch (e) { /* private mode, etc. */ }
+
+            function setState(isCollapsed) {
+                if (isCollapsed) {
+                    group.classList.add('is-collapsed');
+                    toggle.setAttribute('aria-expanded', 'false');
+                } else {
+                    group.classList.remove('is-collapsed');
+                    toggle.setAttribute('aria-expanded', 'true');
+                }
+            }
+
+            setState(collapsed);
+
+            toggle.addEventListener('click', function () {
+                var nowCollapsed = !group.classList.contains('is-collapsed');
+                setState(nowCollapsed);
+                try {
+                    localStorage.setItem(key, nowCollapsed ? '1' : '0');
+                } catch (e) { /* noop */ }
+            });
+        });
     })();
 
     // ── Apply jar colors from data-jar-color attributes ──────────

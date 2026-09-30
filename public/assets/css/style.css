@@ -459,6 +459,94 @@ h2 { font-size: 1.15rem; margin-top: 1.5rem; }
 .msg-slot.is-revealed .msg-card { animation: card-reveal .4s var(--ease-bounce) both; }
 
 /* ── Admin ────────────────────────────────────────────── */
+/* ── Jar groups (collapsible) ────────────────────────── */
+.jar-group {
+    margin-bottom: 1.25rem;
+}
+
+.jar-group-header {
+    margin-bottom: .6rem;
+}
+
+.jar-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    width: 100%;
+    padding: .6rem .9rem;
+    background: var(--bg-card);
+    border: 2px solid var(--pink-soft);
+    border-radius: var(--radius-pill);
+    font-family: "Quicksand", system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--text);
+    font-size: .95rem;
+    letter-spacing: .3px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background .15s var(--ease), border-color .15s var(--ease);
+    text-align: left;
+}
+.jar-group-toggle:hover {
+    background: var(--pink-soft);
+    border-color: var(--pink);
+}
+
+.jar-group-arrow {
+    font-size: .85rem;
+    transition: transform .2s var(--ease);
+    display: inline-block;
+}
+.jar-group.is-collapsed .jar-group-arrow {
+    transform: rotate(-90deg);
+}
+
+.jar-group-name {
+    flex: 1;
+}
+
+.jar-group-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    padding: .1rem .5rem;
+    background: var(--pink-soft);
+    color: var(--accent);
+    border-radius: var(--radius-pill);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.jar-group-body {
+    transition: opacity .2s var(--ease);
+}
+
+.jar-group.is-collapsed .jar-group-body {
+    display: none;
+}
+
+/* Dashboard variant of the collapsible group — a bit softer */
+.dashboard-group .jar-group-toggle {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    padding: .55rem .5rem;
+    font-size: 1.05rem;
+    color: var(--accent);
+}
+.dashboard-group .jar-group-toggle:hover {
+    background: var(--pink-soft);
+    border-color: var(--pink-soft);
+}
+.dashboard-group .jar-group-count {
+    background: var(--bg-deep);
+    color: var(--text-soft);
+}
+.dashboard-group .jar-group-body {
+    padding-top: .5rem;
+}
+
 .admin-table {
     width: 100%; border-collapse: collapse;
     background: var(--bg-card);
