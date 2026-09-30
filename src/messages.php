@@ -221,17 +221,14 @@ function normalize_datetime(string $value, array &$errors, string $label): ?stri
  * Strategy (three tiers, tried in order):
  *
  *   1. NEVER SEEN — messages this user has never viewed in this jar,
- *      oldest first. Guarantees every message is seen at least once
- *      before any repeat, and that newly added messages enter the
- *      rotation immediately.
+ *      oldest first.
  *
- *   2. NOT SEEN RECENTLY — messages whose last view by this user was
- *      more than 30 days ago, ordered by oldest last-view first. After
- *      the unseen pool empties, this keeps the experience fresh by
- *      favouring the messages she hasn't seen in the longest time.
+ *   2. LEAST RECENTLY SEEN — among messages this user has seen, pick
+ *      the one whose last view was the longest ago. Produces a strict
+ *      rotation: A, B, C, A, B, C, ... — no repeats until the cycle
+ *      completes.
  *
- *   3. FULLY RE-CYCLED — every eligible message has been viewed within
- *      the last 30 days. Pick one at random.
+ *   3. NO VIEWS AT ALL — defensive fallback, should be unreachable.
  *
  * Returns the message row, or null if there are no eligible messages.
  */
@@ -258,7 +255,6 @@ function draw_message(int $jarId, int $userId): ?array
     }
 
     // 2. Per-message last-view time for this user, in this jar.
-    //    Messages with no view row are absent from the map.
     $stmt = $pdo->prepare(
         'SELECT m.id AS message_id, MAX(v.viewed_at) AS last_seen
          FROM messages m
@@ -275,9 +271,8 @@ function draw_message(int $jarId, int $userId): ?array
         }
     }
 
-    // 3. Pick the next message using the three-tier strategy.
-    $cutoff30d = time() - (30 * 86400);
-    $chosen    = null;
+    // 3. Pick the next message.
+    $chosen = null;
 
     // Tier 1: never seen, oldest first.
     foreach ($eligible as $m) {
@@ -287,12 +282,13 @@ function draw_message(int $jarId, int $userId): ?array
         }
     }
 
-    // Tier 2: not seen in 30+ days, oldest last-view first.
+    // Tier 2: least-recently-seen, oldest last-view first.
+    // No time cutoff — always rotates through the full set.
     if ($chosen === null) {
         $bestTs = null;
         foreach ($eligible as $m) {
             $ts = strtotime($lastSeen[(int)$m['id']]);
-            if ($ts === false || $ts > $cutoff30d) {
+            if ($ts === false) {
                 continue;
             }
             if ($bestTs === null || $ts < $bestTs) {
@@ -302,9 +298,9 @@ function draw_message(int $jarId, int $userId): ?array
         }
     }
 
-    // Tier 3: everything is recent — pick random.
+    // Tier 3: fallback (should be unreachable).
     if ($chosen === null) {
-        $chosen = $eligible[random_int(0, count($eligible) - 1)];
+        $chosen = $eligible[0];
     }
 
     // 4. Record the view.
