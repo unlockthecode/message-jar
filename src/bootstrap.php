@@ -61,8 +61,10 @@ if (APP_IS_PROD) {
 
 
 // ── 3. Timezone ─────────────────────────────────────────────
-date_default_timezone_set('Asia/Manila');
-
+date_default_timezone_set('UTC');
+// Display timezone for user-facing output.
+// Stored timestamps are UTC; convert only when rendering.
+define('DISPLAY_TZ', 'Asia/Manila');
 
 // ── 4. HTTPS enforcement (production only) ──────────────────
 if (APP_IS_PROD) {

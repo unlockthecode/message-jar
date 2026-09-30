@@ -3,7 +3,15 @@ declare(strict_types=1);
 
 /**
  * Generic security helpers: output escaping, request helpers,
- * CSS value helpers, and header-related utilities.
+ * CSS value helpers, time helpers, and header-related utilities.
+ *
+ * TIMEZONE POLICY:
+ *   - Everything is stored in UTC in the database.
+ *   - PHP's default timezone is UTC (set in bootstrap.php).
+ *   - Timestamps are converted to DISPLAY_TZ only when rendering.
+ *   - Use format_display_time() for absolute output,
+ *     now_display() for "current time in the user's timezone",
+ *     and human_time_ago() for relative times.
  */
 
 /**
@@ -26,10 +34,7 @@ function e(?string $value): string
  * Why not use e()? htmlspecialchars() may encode '#' as &#35; in
  * some PHP configurations. getAttribute('style') decodes it back
  * to '#' for display, but the CSS parser sees the pre-decoded
- * value and rejects the whole declaration — silently. The
- * symptom is "the inline style looks correct in DevTools but
- * the CSS custom property is empty when read via
- * getComputedStyle().getPropertyValue()."
+ * value and rejects the whole declaration — silently.
  *
  * Hex colors contain only characters that are safe in both HTML
  * attributes and CSS values (#, 0-9, a-f, A-F), so we validate
@@ -78,7 +83,6 @@ function abort(int $code, string $message = ''): never
 {
     http_response_code($code);
     if ($message !== '') {
-        // Plain text is fine here — pages should not reach this in normal flow.
         header('Content-Type: text/plain; charset=utf-8');
         echo $message;
     }
@@ -99,19 +103,74 @@ function is_https_url(?string $url): bool
 }
 
 /**
- * "3 minutes ago", "2 hours ago", "yesterday", "Apr 12".
- * Not localized — good enough for an admin panel.
+ * Format a UTC timestamp (MySQL DATETIME string) for display in the
+ * site's DISPLAY_TZ. Returns '' for null/empty input.
+ *
+ * $dbValue must be a MySQL DATETIME in UTC (e.g. "2026-09-30 08:15:00").
+ * $format is any PHP date() format string.
+ *
+ * Examples:
+ *   format_display_time($row['created_at'])             → "Sep 30, 2026 16:15"
+ *   format_display_time($row['unlock_at'], 'M j, Y')    → "Dec 1, 2026"
+ *   format_display_time($row['expires_at'], 'M j, Y H:i')
+ */
+function format_display_time(?string $dbValue, string $format = 'M j, Y H:i'): string
+{
+    if ($dbValue === null || $dbValue === '') {
+        return '';
+    }
+
+    try {
+        $dt = new DateTimeImmutable($dbValue, new DateTimeZone('UTC'));
+    } catch (Throwable $e) {
+        return '';
+    }
+
+    $dt = $dt->setTimezone(new DateTimeZone(DISPLAY_TZ));
+    return $dt->format($format);
+}
+
+/**
+ * Return "now" in the display timezone as a DateTimeImmutable.
+ * Useful when you need to compute values that depend on today's
+ * date in the user's timezone (e.g. "is this timestamp today?").
+ */
+function now_display(): DateTimeImmutable
+{
+    return (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+        ->setTimezone(new DateTimeZone(DISPLAY_TZ));
+}
+
+/**
+ * "just now", "3 min ago", "2 h ago", "yesterday", "Apr 12".
+ *
+ * Input must be a MySQL DATETIME string stored in UTC.
+ *
+ * This implementation parses the input explicitly as UTC and
+ * compares against the current UTC time, so it works correctly
+ * regardless of what PHP's default timezone is set to.
  */
 function human_time_ago(string $dbDatetime): string
 {
-    $ts = strtotime($dbDatetime);
-    if ($ts === false) return '';
-    $diff = time() - $ts;
+    if ($dbDatetime === '') {
+        return '';
+    }
 
+    try {
+        $then = new DateTimeImmutable($dbDatetime, new DateTimeZone('UTC'));
+    } catch (Throwable $e) {
+        return '';
+    }
+
+    $now  = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    $diff = $now->getTimestamp() - $then->getTimestamp();
+
+    if ($diff < 0)         return 'just now';
     if ($diff < 60)        return 'just now';
     if ($diff < 3600)      return (int)($diff / 60) . ' min ago';
     if ($diff < 86400)     return (int)($diff / 3600) . ' h ago';
     if ($diff < 2 * 86400) return 'yesterday';
     if ($diff < 7 * 86400) return (int)($diff / 86400) . ' days ago';
-    return date('M j', $ts);
+
+    return format_display_time($dbDatetime, 'M j');
 }

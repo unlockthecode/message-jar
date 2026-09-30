@@ -32,6 +32,9 @@ function db(): PDO
 
     try {
         $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], $options);
+        // Force this connection to UTC so NOW(), CURRENT_TIMESTAMP,
+        // and any DEFAULT CURRENT_TIMESTAMP columns write UTC.
+        $pdo->exec("SET time_zone = '+00:00'");
     } catch (PDOException $e) {
         // Never expose the raw PDO message in production.
         if (config()['app']['debug']) {
