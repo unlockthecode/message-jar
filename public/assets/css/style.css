@@ -843,13 +843,134 @@ h2 { font-size: 1.15rem; margin-top: 1.5rem; }
 
 /* ── Mobile tweaks ────────────────────────────────────── */
 @media (max-width: 560px) {
-    .admin-topbar { padding: .7rem .85rem; }
-    .admin-nav a { padding: .35rem .6rem; font-size: .9rem; }
+    /* Admin topbar stacks and centers */
+    .admin-topbar {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        gap: .75rem;
+        padding: .85rem .9rem;
+    }
+    .admin-brand { text-align: center; }
+    .admin-nav {
+        justify-content: center;
+    }
+    .admin-signout {
+        text-align: center;
+    }
+    .admin-nav a { padding: .4rem .7rem; font-size: .9rem; }
+
+    /* Quick actions stack */
     .admin-actions { flex-direction: column; align-items: stretch; }
     .admin-actions .btn { justify-content: center; }
-    .admin-table { font-size: .9rem; }
-    .admin-table th, .admin-table td { padding: .55rem .6rem; }
-    .order-cell span { display: inline-block; min-width: 1rem; text-align: center; }
+
+    /* Page title row stacks */
+    .page-title-row {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        gap: .75rem;
+    }
+    .page-title-row > div {
+        justify-content: center;
+    }
+
+    /* ── Jar table becomes a card list ─────────────────── */
+    .admin-table,
+    .admin-table thead,
+    .admin-table tbody,
+    .admin-table tr,
+    .admin-table th,
+    .admin-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-table {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .admin-table thead {
+        display: none;
+    }
+
+    .admin-table tr {
+        background: var(--bg-card);
+        border: 2px solid var(--pink-soft);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        padding: .85rem 1rem;
+        margin-bottom: .75rem;
+        position: relative;
+    }
+
+    .admin-table td {
+        padding: 0;
+        border: 0;
+        text-align: left;
+    }
+
+    /* Order cell — row of ▲ n ▼ controls */
+    .admin-table td.order-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .75rem;
+        padding-bottom: .55rem;
+        border-bottom: 1px solid var(--pink-soft);
+        margin-bottom: .55rem;
+    }
+
+    /* Jar cell — emoji + name + description */
+    .admin-table td:nth-child(2) {
+        padding-bottom: .55rem;
+    }
+
+    /* Messages column hidden on mobile; count visible via badge */
+    .admin-table td:nth-child(3) {
+        display: none;
+    }
+
+    /* Status badge row */
+    .admin-table td:nth-child(4) {
+        padding-bottom: .55rem;
+    }
+
+    /* Actions row at bottom */
+    .admin-table td:last-child {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: .6rem;
+        padding-top: .55rem;
+        border-top: 1px solid var(--pink-soft);
+        margin-top: .55rem;
+    }
+
+    .admin-table .actions {
+        justify-content: center;
+        gap: .6rem;
+    }
+
+    .order-cell span {
+        display: inline-block;
+        min-width: 1rem;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    /* Message list on admin messages page already stacks fine,
+       but tighten spacing for small screens */
+    .message-item {
+        padding: .85rem .95rem;
+    }
+
+    /* Draw items on admin dashboard */
+    .draw-item {
+        padding: .7rem .85rem;
+    }
 }
 
 /* ── Confirm modal ────────────────────────────────────── */
