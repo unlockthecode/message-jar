@@ -146,6 +146,19 @@ both save and render time.
 - Displayed images cannot be made uncopyable. This is fine for
   non-sensitive photos.
 
+## Timezones
+
+All timestamps are stored in UTC. The site detects each visitor's
+browser timezone on first load (via `Intl.DateTimeFormat()`) and
+stores it in a cookie; the server validates it against PHP's list
+of known timezone identifiers and uses it to format dates in the
+visitor's local time.
+
+Scheduling (unlock and expiration dates) is anchored to the site's
+configured `DISPLAY_TZ` (default `Asia/Manila`) rather than the
+visitor's timezone. This ensures "9 AM" always means "9 AM for the
+recipient" regardless of where the author is editing from.
+
 ## Deployment
 
 Deployed for free on [InfinityFree](https://infinityfree.net).
