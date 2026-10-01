@@ -1,3 +1,9 @@
+<?php
+declare(strict_types=1);
+
+header('Content-Type: application/manifest+json; charset=utf-8');
+header('Cache-Control: public, max-age=3600');
+?>
 {
     "name": "Message Jar",
     "short_name": "Jars",
