@@ -134,6 +134,7 @@ $csp = implode('; ', [
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' https://upload.imagekit.io",
     "frame-src https://www.youtube-nocookie.com",
+    "manifest-src 'self'",
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",

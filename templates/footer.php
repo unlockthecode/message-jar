@@ -1,4 +1,4 @@
-<script src="/assets/js/jar.js?v=4" defer></script>
+<script src="/assets/js/jar.js?v=5" defer></script>
 <div class="confirm-modal" id="confirm-modal" hidden>
     <div class="confirm-backdrop" data-confirm-cancel></div>
     <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
